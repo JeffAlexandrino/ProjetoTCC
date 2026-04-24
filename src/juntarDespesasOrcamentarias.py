@@ -1,15 +1,9 @@
 import os
 import glob
-try:
-    import pandas as pd
-except ImportError:
-    print("Pandas is not installed. Please install it using 'pip install pandas'")
-    exit(1)
+import pandas as pd
 
-# Defina o diretório onde estão os arquivos
 os.chdir("data")
 
-# Lista todos os arquivos .csv
 all_filenames = [i for i in glob.glob('*.csv')]
 
 # Concatena e salva

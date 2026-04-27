@@ -1,104 +1,147 @@
-# ProjetoTCC
+# ProjetoT CC
 
-**Análise de Dados Orçamentários da Prefeitura Municipal de Criciúma/SC**
+**Análise e Modelagem de Dados Orçamentários Públicos — Prefeitura de Criciúma/SC**
 
 ---
 
-## Descrição
+## Visão Geral
 
-Este projeto faz parte do Trabalho de Conclusão de Curso (TCC) e tem como objetivo processar, analisar e extrair insights de dados orçamentários públicos da Prefeitura Municipal de Criciúma, Santa Catarina.
+Este projeto tem como objetivo analisar dados orçamentários públicos da Prefeitura Municipal de Criciúma/SC, aplicando técnicas de **ciência de dados e aprendizado de máquina** para extrair padrões, identificar comportamentos e gerar insights sobre o uso de recursos públicos.
 
-O sistema processa dados de despesas orçamentárias e os relaciona com registros de empenhos, permitindo uma visão integrada das movimentações financeiras públicas.
+A proposta vai além da simples integração de dados, incluindo:
+
+- Tratamento e limpeza de dados reais
+- Engenharia de atributos (feature engineering)
+- Análise exploratória
+- Treinamento de modelos de Machine Learning
+- Avaliação de desempenho (acurácia, precisão, recall e F1-score)
+
+---
+
+## Objetivos
+
+- Consolidar dados de despesas e empenhos
+- Melhorar a qualidade e consistência dos dados
+- Criar variáveis relevantes para análise
+- Aplicar modelos preditivos
+- Avaliar a capacidade dos modelos em identificar padrões nos dados públicos
+
+---
+
+## Tecnologias Utilizadas
+
+- Python 3
+- Pandas
+- NumPy
+- Scikit-learn
 
 ---
 
 ## Estrutura do Projeto
 
-```
 ProjetoTCC/
-├── data/                           # Diretório de dados
-│   ├── despesasComEmpenhos.csv     # Despesas combinadas com empenhos
-│   ├── despesasOrcamentarias.csv   # Dados originais de despesas
-│   └── Empenhos/                   # Arquivos de empenhos individuais
+│         
+├── data/                                 
+│   ├── despesasComEmpenhos.csv           
+│   ├── despesasOrcamentarias.csv         
+│   └── Empenhos/                         
 │       └── empenhos_*.csv
-├── src/                            # Código fonte
-│   ├── despesasComEmpenhos.py      # Script principal: junção despesas + empenhos
-│   ├── juntarDespesasOrcamentarias.py # Utilitário: consolidação de CSVs
-│   └── preprocessamento.py         # Módulo de pré-processamento (template)
-├── requirements.txt                # Dependências Python
-└── README.md                       # Este arquivo
-```
+│
+├── src/                                  
+│   ├── despesasComEmpenhos.py       
+│   ├── juntarDespesasOrcamentarias.py    
+│   ├── preprocessamento.py               
+│   └── modelo.py                         
+│
+├── requirements.txt                      
+└── README.md                             
+
+## Pipeline do Projeto
+
+O fluxo do projeto segue as etapas abaixo:
+
+### 1. Coleta e Integração
+- Leitura dos dados de despesas
+- Associação com arquivos de empenhos
+
+### 2. Pré-processamento
+- Limpeza de dados inconsistentes
+- Tratamento de valores nulos
+- Padronização de colunas
+
+### 3. Engenharia de Features
+- Criação de variáveis derivadas
+- Transformações para melhorar desempenho dos modelos
+
+### 4. Modelagem
+- Treinamento de algoritmos de Machine Learning
+- Exemplo:
+  - Random Forest
+
+### 5. Avaliação
+- Métricas utilizadas:
+  - Acurácia
+  - Precisão
+  - Recall
+  - F1-score
+  - Matriz de confusão
 
 ---
 
 ## Como Executar
 
-### 1. Pré-requisitos
-
-- Python 3.8 ou superior
-- pip (gerenciador de pacotes)
-
-### 2. Instalar dependências
+### 1. Instalar dependências
 
 ```bash
 pip install -r requirements.txt
-```
+````
 
-### 3. Executar o processamento principal
+### 2. Gerar dataset consolidado
 
 ```bash
 python src/despesasComEmpenhos.py
 ```
 
-Este script:
-- Lê o arquivo `despesasOrcamentarias.csv`
-- Para cada registro, busca os arquivos de empenhos associados
-- Gera um novo CSV combinando despesas com dados de empenhos
+### 3. Executar modelo (se aplicável)
+
+```bash
+python src/modelo.py
+```
 
 ---
 
 ## Dados
 
 ### Fonte
-- Dados públicos do portal da transparência da Prefeitura de Criciúma/SC
 
-### Formato
-- Encoding: Latin-1 (ISO-8859-1)
-- Separador: vírgula (,)
-- Codificação: UTF-8 para saída
+* Portal da Transparência da Prefeitura de Criciúma/SC
 
-### Estrutura dos Dados
+### Características
 
-| Campo | Descrição |
-|-------|------------|
-| `despesasOrcamentarias.csv` | Dados originais de despesas |
-| `empenhos_*.csv` | Registros de empenhos por documento |
+* Dados reais e públicos
+* Encoding original: Latin-1
+* Dados tratados para UTF-8
 
 ---
 
-## Dependências
+## Limitações
 
-```
-pandas>=1.5.0
-```
+* Dados podem conter inconsistências de origem
+* Dependência de arquivos externos (empenhos)
+* Modelo inicial ainda pode ser otimizado
 
 ---
 
 ## Autores
 
-**Jefferson Barzan Alexandrino**  
-**Gabriel Angelo Kaufmann**  
-
----
-
-## Licença
-
-Este projeto está disponível para fins educacionais.
+* [Jefferson Barzan Alexandrino](https://github.com/JeffAlexandrino)
+* [Gabriel Angelo Kaufmann](https://github.com/GabrielAKaufmann)
 
 ---
 
 ## Referências
 
-- Portal da Transparência - Prefeitura de Criciúma
-- Lei de Responsabilidade Fiscal
-- Portal de Dados Abertos do Governo Federal
+* Portal da Transparência de Criciúma
+* Lei de Responsabilidade Fiscal
+* Dados Abertos do Governo Federal
+* Documentação Scikit-learn

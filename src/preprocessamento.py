@@ -37,7 +37,7 @@ df["mes_empenho"] = df["dataEmpenho"].dt.month
 df["dia_semana"]  = df["dataEmpenho"].dt.dayofweek
 
 # Criando razões apenas com dados de orçamento/empenho
-df["razao_empenho_orcado"] = df["valorEmpenhado"] / (df["valorOrcado"] + 1)
+df["razao_empenho_orcado"] = df["valorEmpenho"] / (df["valorOrcado"] + 1)
 df["variacao_orcamento"]    = df["valorOrcadoAtualizado"] - df["valorOrcado"]
 
 df["log_valorOrcado"]  = np.log1p(df["valorOrcado"])

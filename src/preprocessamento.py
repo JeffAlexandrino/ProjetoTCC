@@ -1,7 +1,6 @@
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestRegressor
@@ -15,7 +14,7 @@ df.columns = df.columns.str.strip().str.replace("ï»¿", "", regex=False)
 
 print(f"Dados carregados: {df.shape}")
 
-# 2. LIMPEZA E TRATAMENTO DE OUTLIERS (Passo 1 do auxílio)
+# 2. LIMPEZA E TRATAMENTO DE OUTLIERS
 df = df.dropna(subset=["valorPago", "valorEmpenho"]).drop_duplicates()
 
 Q1 = df['valorPago'].quantile(0.25)
@@ -27,7 +26,7 @@ limite_superior = Q3 + 1.5 * IQR
 df = df[df['valorPago'] <= limite_superior].copy()
 print(f"Dados após remoção de outliers: {df.shape}")
 
-# 3. TARGET (TRANSFORMAÇÃO LOGARÍTMICA)
+# 3. TARGET
 df["log_valorPago"] = np.log1p(df["valorPago"])
 y_col = "log_valorPago"
 
@@ -96,22 +95,27 @@ lr.fit(X_train, y_train)
 
 # Otimização: Random Forest com RandomizedSearchCV
 param_dist = {
-    'n_estimators': [100, 300],
-    'max_depth': [10, 20, None],
-    'min_samples_leaf': [2, 5]
+    'n_estimators': [300, 500, 800],
+    'max_depth': [20, 40, None],          
+    'min_samples_leaf': [1, 2, 5],
+    'min_samples_split': [2, 5, 10],
+    'max_features': ['sqrt', 'log2', 0.5]
 }
 
 rf_search = RandomizedSearchCV(
     RandomForestRegressor(random_state=42),
     param_distributions=param_dist,
-    n_iter=5, 
-    cv=3,
+    n_iter=30,      
+    cv=5,
+    scoring='r2',
     n_jobs=-1,
-    random_state=42
+    random_state=42,
+    verbose=1
 )
 
 rf_search.fit(X_train, y_train)
 best_rf = rf_search.best_estimator_
+
 
 # 10. AVALIAÇÃO
 def avaliar(nome, y_true, y_pred_log):
@@ -127,8 +131,31 @@ def avaliar(nome, y_true, y_pred_log):
     print(f"RMSE: {rmse:.2f}")
     print(f"R² Score: {r2:.4f}")
 
+# Baseline ingênuo: predizer que valorPago ≈ valorOrcado
+y_pred_naive = X_test["log_valorOrcado"].values
+avaliar("Baseline Ingênuo (log_valorOrcado direto)", y_test, y_pred_naive)
+
 avaliar("Linear Regression (Baseline)", y_test, lr.predict(X_test))
 avaliar("Random Forest (Otimizado)", y_test, best_rf.predict(X_test))
+
+# Avaliação por faixa de valor
+print("\n--- Desempenho por faixa de valor pago ---")
+y_test_real = np.expm1(y_test)
+y_pred_real = np.expm1(best_rf.predict(X_test))
+
+faixas = [
+    ("Pequeno (< R$100k)",    y_test_real < 100_000),
+    ("Médio (R$100k–1M)",    (y_test_real >= 100_000) & (y_test_real < 1_000_000)),
+    ("Grande (> R$1M)",       y_test_real >= 1_000_000),
+]
+
+for nome, mask in faixas:
+    n = mask.sum()
+    if n == 0:
+        continue
+    mae_f  = mean_absolute_error(y_test_real[mask], y_pred_real[mask])
+    r2_f   = r2_score(y_test[mask], best_rf.predict(X_test)[mask])
+    print(f"{nome}: n={n}, MAE=R${mae_f:,.0f}, R²={r2_f:.4f}")
 
 # 11. IMPORTÂNCIA DAS FEATURES
 importancias = best_rf.feature_importances_

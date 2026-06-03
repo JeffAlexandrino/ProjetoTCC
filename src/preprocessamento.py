@@ -1,108 +1,71 @@
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-from scipy.stats import boxcox
-
+from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score
-)
-from sklearn.model_selection import (
-    RandomizedSearchCV,
-    train_test_split
-)
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import RandomizedSearchCV
 
-df = pd.read_csv(
-    "data/despesasComEmpenhos.csv",
-    encoding='latin1'
-)
-
-df.columns = (
-    df.columns
-    .str.strip()
-    .str.replace("ï»¿", "", regex=False)
-)
+# 1. CARREGAMENTO
+df = pd.read_csv("data/despesasComEmpenhos.csv", encoding="latin1")
+df.columns = df.columns.str.strip().str.replace("ï»¿", "", regex=False)
 
 print(f"Dados carregados: {df.shape}")
 
-df = (
-    df
-    .dropna(subset=["valorPago", "valorEmpenho"])
-    .drop_duplicates()
-)
+# 2. LIMPEZA
+df = df.dropna(subset=["valorPago", "valorEmpenho"])
+df = df.drop_duplicates()
 
-print(f"Dados após limpeza: {df.shape}")
-
-Q1 = df['valorPago'].quantile(0.25)
-Q3 = df['valorPago'].quantile(0.75)
+# 3. TRATAMENTO DE OUTLIERS (WINSORIZAÇÃO)
+Q1 = df["valorPago"].quantile(0.25)
+Q3 = df["valorPago"].quantile(0.75)
 
 IQR = Q3 - Q1
 
 limite_inferior = max(0, Q1 - 1.5 * IQR)
 limite_superior = Q3 + 1.5 * IQR
 
-# Substitui valores extremos pelos limites
-df['valorPago'] = df['valorPago'].clip(
+df["valorPago"] = df["valorPago"].clip(
     lower=limite_inferior,
     upper=limite_superior
 )
 
-print("Outliers tratados com winsorização.")
-
-# Target
-df["valorPago_boxcox"], lambda_pago = boxcox(
-    df["valorPago"] + 1
+print(
+    f"Outliers suavizados "
+    f"({limite_inferior:,.2f} até {limite_superior:,.2f})"
 )
 
-y_col = "valorPago_boxcox"
+# 4. TARGET
+df["log_valorPago"] = np.log1p(df["valorPago"])
+y_col = "log_valorPago"
 
-# Preditoras numéricas
-df["valorOrcado_boxcox"], lambda_orcado = boxcox(
-    df["valorOrcado"] + 1
-)
-
-df["valorEmpenho_boxcox"], lambda_empenho = boxcox(
-    df["valorEmpenho"] + 1
-)
-
-print("Transformação Box-Cox aplicada.")
-
+# 5. FEATURE ENGINEERING
 df["dataEmpenho"] = pd.to_datetime(
     df["dataEmpenho"],
     errors="coerce"
 )
 
-# Variáveis temporais como categóricas
-df["mes_empenho"] = (
-    df["dataEmpenho"]
-    .dt.month
-    .astype(str)
-)
+df["mes_empenho"] = df["dataEmpenho"].dt.month
+df["dia_semana"] = df["dataEmpenho"].dt.dayofweek
 
-df["dia_semana"] = (
-    df["dataEmpenho"]
-    .dt.dayofweek
-    .astype(str)
-)
-
-# Features derivadas
 df["razao_empenho_orcado"] = (
-    df["valorEmpenhado"] /
+    df["valorEmpenho"] /
     (df["valorOrcado"] + 1)
 )
 
 df["variacao_orcamento"] = (
-    df["valorOrcadoAtualizado"] -
-    df["valorOrcado"]
+    df["valorOrcadoAtualizado"]
+    - df["valorOrcado"]
 )
+
+df["log_valorOrcado"] = np.log1p(df["valorOrcado"])
+df["log_valorEmpenho"] = np.log1p(df["valorEmpenho"])
 
 print("Features criadas.")
 
+# 6. DEFINIÇÃO DAS FEATURES
 features_cat = [
     "descricaoOrgao",
     "descricaoFuncao",
@@ -117,102 +80,192 @@ features_cat = [
 features_num = [
     "razao_empenho_orcado",
     "variacao_orcamento",
-    "valorOrcado_boxcox",
-    "valorEmpenho_boxcox"
+    "log_valorOrcado",
+    "log_valorEmpenho"
 ]
 
 features = features_cat + features_num
 
-df_modelo = pd.get_dummies(
-    df[features],
-    columns=features_cat,
-    drop_first=True
-)
-
-print("Variáveis categóricas codificadas com get_dummies.")
-
-X = df_modelo.fillna(0)
-y = df[y_col]
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42
-)
+# 7. SPLIT TEMPORAL
+treino = df[df["ano"] <= 2023].copy()
+validacao = df[df["ano"] == 2024].copy()
+teste = df[df["ano"] == 2025].copy()
 
 print(
-    f"Treino: {X_train.shape} | "
-    f"Teste: {X_test.shape}"
+    f"Treino: {treino.shape} | "
+    f"Validação: {validacao.shape} | "
+    f"Teste: {teste.shape}"
 )
 
+# 8. ENCODING
+le_dict = {}
+
+for col in features_cat:
+
+    le = LabelEncoder()
+
+    treino[col] = le.fit_transform(
+        treino[col].astype(str)
+    )
+
+    conhecidos = set(le.classes_)
+
+    validacao[col] = validacao[col].astype(str).apply(
+        lambda x:
+        le.transform([x])[0]
+        if x in conhecidos
+        else -1
+    )
+
+    teste[col] = teste[col].astype(str).apply(
+        lambda x:
+        le.transform([x])[0]
+        if x in conhecidos
+        else -1
+    )
+
+    le_dict[col] = le
+
+# 9. MATRIZES
+X_train = treino[features].fillna(0)
+y_train = treino[y_col]
+
+X_val = validacao[features].fillna(0)
+y_val = validacao[y_col]
+
+X_test = teste[features].fillna(0)
+y_test = teste[y_col]
+
+# 10. MODELOS
 print("\n--- Iniciando Treinamento ---")
 
+# Baseline Linear
 lr = LinearRegression()
-
 lr.fit(X_train, y_train)
 
+# Random Forest
 param_dist = {
-    'n_estimators': [100, 300],
-    'max_depth': [10, 20, None],
-    'min_samples_leaf': [2, 5]
+    "n_estimators": [300, 500, 800],
+    "max_depth": [20, 40, None],
+    "min_samples_leaf": [1, 2, 5],
+    "min_samples_split": [2, 5, 10],
+    "max_features": ["sqrt", "log2", 0.5]
 }
 
 rf_search = RandomizedSearchCV(
     RandomForestRegressor(random_state=42),
     param_distributions=param_dist,
-    n_iter=5,
-    cv=3,
+    n_iter=30,
+    cv=5,
+    scoring="r2",
     n_jobs=-1,
-    random_state=42
+    random_state=42,
+    verbose=1
 )
 
 rf_search.fit(X_train, y_train)
-
 best_rf = rf_search.best_estimator_
 
-# =========================================================
-# 11. AVALIAÇÃO DOS MODELOS
-# =========================================================
+print("\nMelhores parâmetros:")
+print(rf_search.best_params_)
 
-def avaliar(nome, y_true, y_pred):
+# 11. AVALIAÇÃO
+def avaliar(nome, y_true, y_pred_log):
 
-    mae = mean_absolute_error(y_true, y_pred)
+    y_true_real = np.expm1(y_true)
+    y_pred_real = np.expm1(y_pred_log)
 
-    rmse = np.sqrt(
-        mean_squared_error(y_true, y_pred)
+    mae = mean_absolute_error(
+        y_true_real,
+        y_pred_real
     )
 
-    r2 = r2_score(y_true, y_pred)
+    rmse = np.sqrt(
+        mean_squared_error(
+            y_true_real,
+            y_pred_real
+        )
+    )
+
+    r2 = r2_score(
+        y_true,
+        y_pred_log
+    )
 
     print(f"\n[{nome}]")
-    print(f"MAE: {mae:.4f}")
-    print(f"RMSE: {rmse:.4f}")
-    print(f"R² Score: {r2:.4f}")
+    print(f"MAE: R$ {mae:,.2f}")
+    print(f"RMSE: {rmse:,.2f}")
+    print(f"R²: {r2:.4f}")
 
-# Avaliação Regressão Linear
+# Baseline ingênuo
+y_pred_naive = X_test["log_valorOrcado"]
+
 avaliar(
-    "Linear Regression (Baseline)",
+    "Baseline Ingênuo",
+    y_test,
+    y_pred_naive
+)
+
+# Linear
+avaliar(
+    "Linear Regression",
     y_test,
     lr.predict(X_test)
 )
 
-# Avaliação Random Forest
+# Random Forest
 avaliar(
-    "Random Forest (Otimizado)",
+    "Random Forest",
     y_test,
     best_rf.predict(X_test)
 )
 
-importancias = best_rf.feature_importances_
+# 12. AVALIAÇÃO POR FAIXA
+print("\n--- Desempenho por faixa ---")
 
+y_test_real = np.expm1(y_test)
+y_pred_real = np.expm1(best_rf.predict(X_test))
+
+faixas = [
+    ("Pequeno (<100k)", y_test_real < 100_000),
+    (
+        "Médio (100k-1M)",
+        (y_test_real >= 100_000)
+        & (y_test_real < 1_000_000)
+    ),
+    ("Grande (>1M)", y_test_real >= 1_000_000)
+]
+
+for nome, mask in faixas:
+
+    if mask.sum() == 0:
+        continue
+
+    mae = mean_absolute_error(
+        y_test_real[mask],
+        y_pred_real[mask]
+    )
+
+    r2 = r2_score(
+        y_test[mask],
+        best_rf.predict(X_test)[mask]
+    )
+
+    print(
+        f"{nome}: "
+        f"n={mask.sum()} | "
+        f"MAE=R${mae:,.0f} | "
+        f"R²={r2:.4f}"
+    )
+
+# 13. IMPORTÂNCIA DAS FEATURES
+importancias = best_rf.feature_importances_
 indices = np.argsort(importancias)
 
-plt.figure(figsize=(12, 8))
+plt.figure(figsize=(10, 6))
 
 plt.title(
-    'Importância das Variáveis '
-    'para Previsão de Gastos'
+    "Importância das Variáveis para Previsão de Gastos"
 )
 
 plt.barh(
@@ -222,17 +275,16 @@ plt.barh(
 
 plt.yticks(
     range(len(indices)),
-    X.columns[indices]
+    [features[i] for i in indices]
 )
 
-plt.xlabel('Importância Relativa')
+plt.xlabel("Importância Relativa")
 
 plt.grid(
-    axis='x',
-    linestyle='--',
-    alpha=0.7
+    axis="x",
+    linestyle="--",
+    alpha=0.5
 )
 
 plt.tight_layout()
-
 plt.show()

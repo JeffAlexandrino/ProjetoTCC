@@ -1,186 +1,104 @@
-# Projeto TCC
+# Análise de Dados com Machine Learning para Apoio à Tomada de Decisão na Gestão Pública
 
-## Previsão de Despesas Públicas Municipais Utilizando Técnicas de Machine Learning
-
-### Visão Geral
-
-Este projeto tem como objetivo analisar dados orçamentários públicos da Prefeitura Municipal de Criciúma/SC e aplicar técnicas de Ciência de Dados e Machine Learning para prever valores de despesas públicas a partir de informações financeiras e administrativas presentes nos registros de execução orçamentária.
-
-A pesquisa utiliza dados disponibilizados pelo Portal da Transparência municipal, contemplando etapas de integração, tratamento, análise exploratória, engenharia de atributos e treinamento de modelos preditivos de regressão.
+Este repositório contém o código-fonte e a documentação do projeto de conclusão de curso (TCC) desenvolvido para o Centro Universitário UniSATC. O objetivo do trabalho é prever os valores pagos em despesas orçamentárias da Prefeitura Municipal de Criciúma/SC, servindo como uma ferramenta estratégica de inteligência governamental para transicionar a gestão pública de uma postura reativa para uma baseada em evidências.
 
 ---
 
-## Objetivos
+## Visão Geral do Projeto
 
-### Objetivo Geral
-
-Desenvolver e avaliar modelos de aprendizado de máquina capazes de prever valores pagos em despesas públicas municipais.
+A pesquisa consiste em um estudo quantitativo e aplicado utilizando dados financeiros históricos extraídos da plataforma Betha Cloud (Portal da Transparência de Criciúma). Através de um pipeline completo de Ciência de Dados, os registros foram tratados e submetidos a algoritmos de regressão para estimar o desembolso final das despesas a partir de dados orçamentários iniciais.
 
 ### Objetivos Específicos
-
-* Integrar dados de despesas orçamentárias e empenhos;
-* Realizar tratamento e limpeza dos dados;
-* Aplicar técnicas de engenharia de atributos;
-* Identificar padrões e relações entre variáveis financeiras;
-* Treinar modelos de regressão supervisionada;
-* Comparar o desempenho dos algoritmos utilizados;
-* Avaliar a capacidade preditiva dos modelos por meio de métricas estatísticas.
+* Consolidar e integrar dados de despesas orçamentárias e seus respectivos empenhos.
+* Tratar inconsistências e suavizar outliers orçamentários por meio de Winsorização utilizando o método IQR.
+* Codificar variáveis categóricas complexas da administração pública (órgão, função, elemento, fontes de recurso) via *Label Encoding*.
+* Implementar validação temporal (*out-of-time*) rigorosa para evitar vazamento de dados (*data leakage*).
+* Treinar, otimizar e avaliar modelos preditivos de Machine Learning para predição da variável alvo transformidada em escala logarítmica (`log_valorPago`).
 
 ---
 
-## Tecnologias Utilizadas
+## Tecnologias e Bibliotecas Utilizadas
 
-* Python 3
-* Pandas
-* NumPy
-* Scikit-Learn
-* XGBoost
-* LightGBM
-* Matplotlib
-* Seaborn
+* **Python 3.10+**
+* **Pandas & NumPy:** Manipulação de dados, consolidação de arquivos e transformações matemáticas.
+* **Scikit-Learn:** Pré-processamento (*LabelEncoder*), algoritmos de Machine Learning, otimização de hiperparâmetros (*RandomizedSearchCV*) e métricas de avaliação.
+* **Matplotlib:** Geração de gráficos para análise de importância de atributos.
 
 ---
 
-## Estrutura do Projeto
+## Estrutura do Repositório
 
 ```text
 ProjetoTCC/
 │
 ├── data/
-│   ├── despesasComEmpenhos.csv
-│   ├── despesasOrcamentarias.csv
-│   └── Empenhos/
-│       └── empenhos_*.csv
+│   └── despesasComEmpenhos.csv          # Base integrada e consolidada
 │
 ├── src/
-│   ├── despesasComEmpenhos.py
-│   ├── juntarDespesasOrcamentarias.py
-│   ├── preprocessamento.py
-│   └── modelo.py
+│   ├── despesasComEmpenhos.py           # Script de extração e junção inicial
+│   ├── preprocessamento.py              # Limpeza e tratamento de dados
+│   └── modelo.py                        # Pipeline de treino, tunagem e avaliação
 │
-├── requirements.txt
-└── README.md
+├── requirements.txt                     # Dependências do projeto
+└── README.md                            # Documentação principal
+
 ```
 
 ---
 
-## Metodologia
+## Metodologia Implementada
 
-### 1. Coleta e Integração dos Dados
+1. **Tratamento de Outliers:** Aplicação de Winsorização na variável `valorPago` delimitando os valores num intervalo computado por limites IQR (R$ 0,00 a R$ 64.160.786,12), suavizando valores extremos sem descartar registros legítimos.
+2. **Engenharia de Atributos (Feature Engineering):**
+* Extração de componentes temporais: `mes_empenho` e `dia_semana`.
+* Criação de razões e variações: `razao_empenho_orcado` e `variacao_orcamento`.
+* Transformação logarítmica (`np.log1p`) das variáveis monetárias volumosas para estabilização da variância.
 
-Os dados foram obtidos a partir do Portal da Transparência da Prefeitura de Criciúma/SC e integrados por meio da associação entre registros de despesas e respectivos empenhos.
 
-### 2. Pré-processamento
-
-Foram realizadas atividades de:
-
-* Remoção de inconsistências;
-* Tratamento de valores ausentes;
-* Conversão de tipos de dados;
-* Padronização de formatos;
-* Tratamento de outliers utilizando o método IQR com limitação de valores extremos (Winsorização).
-
-### 3. Engenharia de Atributos
-
-Foram criadas variáveis derivadas capazes de fornecer informações adicionais aos modelos, incluindo:
-
-* Diferença entre valor empenhado e valor pago;
-* Componentes temporais (ano, mês e trimestre);
-* Indicadores financeiros derivados.
-
-### 4. Análise Exploratória dos Dados
-
-Foi realizada análise estatística e visual dos dados para compreensão de distribuições, correlações e padrões relevantes para o processo de modelagem.
-
-### 5. Modelagem Preditiva
-
-Os seguintes algoritmos foram avaliados:
-
-* Random Forest Regressor
-* XGBoost Regressor
-* LightGBM Regressor
-
-A otimização de hiperparâmetros foi realizada por meio de validação cruzada e Randomized Search.
-
-### 6. Avaliação dos Modelos
-
-Os modelos foram avaliados utilizando métricas adequadas para problemas de regressão:
-
-* MAE (Mean Absolute Error)
-* RMSE (Root Mean Squared Error)
-* R² (Coeficiente de Determinação)
-
+3. **Divisão Temporal de Dados:**
+* **Treino:** Registros até 2023.
+* **Validação interna:** Dados de 2024 (utilizados exclusivamente para seleção de hiperparâmetros por validação cruzada no *RandomizedSearchCV*, funcionando como um *gap* temporal protetivo).
+* **Teste (Avaliação Final):** Registros de 2025.
+  
 ---
 
 ## Principais Resultados
 
-O estudo demonstrou que técnicas de aprendizado de máquina são capazes de identificar padrões relevantes em dados orçamentários públicos, alcançando elevado desempenho preditivo na estimativa dos valores pagos.
+Os modelos preditivos foram comparados com um *Baseline Ingênuo* (heurística que assume que o valor pago será estritamente igual ao valor orçado). As métricas monetárias foram calculadas revertendo a escala logarítmica:
 
-Entre os modelos avaliados, o Random Forest apresentou os melhores resultados gerais, obtendo o maior coeficiente de determinação (R²) e os menores erros de previsão.
+| Métrica | Baseline Ingênuo | Regressão Linear (Baseline) | Random Forest Regressor |
+| --- | --- | --- | --- |
+| **MAE (R$)** | R$ 13.540.627,00 | R$ 5.511.745,00 | **R$ 3.403.157,00** |
+| **RMSE (R$)** | R$ 36.790.906,00 | R$ 32.281.851,00 | **R$ 5.629.846,00** |
+| **$R^2$** | -1,0791 | 0,9129 | **0,9172** |
+
+O **Random Forest Regressor** apresentou uma performance substancialmente superior, reduzindo o erro quadrático em quase **6 vezes** se comparado à Regressão Linear, demonstrando alta robustez contra erros de grande magnitude.
 
 ---
 
-## Como Executar
+## Como Executar o Projeto
 
-### Instalar Dependências
-
+1. Instale as dependências necessárias:
 ```bash
 pip install -r requirements.txt
+
 ```
 
-### Gerar Base Consolidada
-
-```bash
-python src/despesasComEmpenhos.py
-```
-
-### Realizar Pré-processamento
-
+2. Processe e prepare a base de dados:
 ```bash
 python src/preprocessamento.py
+
 ```
 
-### Treinar e Avaliar os Modelos
-
+3. Execute o script de modelagem para treinar, otimizar hiperparâmetros e visualizar as avaliações:
 ```bash
 python src/modelo.py
+
 ```
-
----
-
-## Fonte dos Dados
-
-Portal da Transparência da Prefeitura Municipal de Criciúma/SC.
-
-Características dos dados:
-
-* Dados públicos e oficiais;
-* Registros de despesas orçamentárias;
-* Informações de empenhos e pagamentos;
-* Dados convertidos e tratados para análise computacional.
-
----
-
-## Limitações
-
-* Dependência da qualidade dos dados disponibilizados pelo portal público;
-* Possibilidade de inconsistências originadas na coleta dos dados;
-* Resultados limitados ao conjunto de dados analisado;
-* Necessidade de revalidação para aplicação em outros municípios.
 
 ---
 
 ## Autores
 
-* [Jefferson Barzan Alexandrino](https://github.com/JeffAlexandrino)
-* [Gabriel Angelo Kaufmann](https://github.com/GabrielAKaufmann)
-
----
-
-## Referências
-
-* BREIMAN, Leo. Random Forests. Machine Learning, 2001.
-* PEDREGOSA, Fabian et al. Scikit-Learn: Machine Learning in Python, 2011.
-* CHEN, Tianqi; GUESTRIN, Carlos. XGBoost: A Scalable Tree Boosting System, 2016.
-* KE, Guolin et al. LightGBM: A Highly Efficient Gradient Boosting Decision Tree, 2017.
-* Portal da Transparência da Prefeitura de Criciúma/SC.
+* [Gabriel Angelo Kaufmann](https://www.google.com/search?q=https://github.com/GabrielAKaufmann)
+* [Jefferson Barzan Alexandrino](https://www.google.com/search?q=https://github.com/JeffAlexandrino)
